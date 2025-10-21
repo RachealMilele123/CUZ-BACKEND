@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
+const addressRoutes = require("./routes/addressRoutes");
 
 dotenv.config();
 
@@ -10,9 +11,8 @@ const app = express();
 app.use(express.json());
 
 // Test route
-app.get("/name", (req, res) => {
-  res.send("Hello, Racheal! Your server is running 💖");
-});
+app.use("/cuz/address", addressRoutes);
+
 
 // Connect to MongoDB
 mongoose
