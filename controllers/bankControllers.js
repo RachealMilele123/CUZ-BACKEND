@@ -4,60 +4,6 @@ const User = require("../models/User");
 const Account = require("../models/Account");
 const Transaction = require("../models/Transaction");
 // ...existing code...
-// Register user
-exports.register = async (req, res) => {
-  try {
-    const {
-      name,
-      email,
-      phone,
-      password,
-      address,
-      dob,
-      type,
-      studentId,
-      course,
-      schoolName,
-      businessName,
-      registrationNumber,
-    } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({
-      name,
-      email,
-      phone,
-      password: hashedPassword,
-      address,
-      dob,
-      type,
-      studentId,
-      course,
-      schoolName,
-      businessName,
-      registrationNumber,
-    });
-    await user.save();
-    // Create account with generated account number
-    const accountNumber = generateAccountNumber(type);
-    const account = new Account({ user: user._id, accountNumber, type });
-    await account.save();
-    // Prepare user data to return (exclude password)
-    const userObj = user.toObject();
-    delete userObj.password;
-    res.status(201).json({
-      message: "Registration successful. Await admin approval.",
-      user: userObj,
-      account: {
-        accountNumber: account.accountNumber,
-        type: account.type,
-        balance: account.balance,
-        createdAt: account.createdAt,
-      },
-    });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-};
 
 // Admin approves user
 exports.approveUser = async (req, res) => {

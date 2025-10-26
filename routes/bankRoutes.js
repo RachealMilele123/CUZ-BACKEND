@@ -4,9 +4,10 @@ const router = express.Router();
 
 const bankControllers = require("../controllers/bankControllers");
 const authControllers = require("../controllers/authControllers");
+const registerController = require("../controllers/registerController");
 
 router.post("/login", authControllers.login);
-router.post("/register", bankControllers.register);
+router.post("/register", registerController.register);
 router.post("/approve", bankControllers.approveUser);
 router.post("/deposit", bankControllers.deposit);
 router.post("/transfer", bankControllers.transfer);
