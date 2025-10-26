@@ -1,9 +1,11 @@
 // Login route for users and admins
 const express = require("express");
 const router = express.Router();
-const bankControllers = require("../controllers/bankControllers");
 
-router.post("/login", bankControllers.login);
+const bankControllers = require("../controllers/bankControllers");
+const authControllers = require("../controllers/authControllers");
+
+router.post("/login", authControllers.login);
 router.post("/register", bankControllers.register);
 router.post("/approve", bankControllers.approveUser);
 router.post("/deposit", bankControllers.deposit);
