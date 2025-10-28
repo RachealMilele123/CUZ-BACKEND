@@ -3,8 +3,8 @@ dotenv.config();
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-const addressRoutes = require("./routes/addressRoutes");
-const bankRoutes = require("./routes/bankRoutes");
+const addressRoutes = require("../routes/addressRoutes");
+const bankRoutes = require("../routes/bankRoutes");
 
 const app = express();
 

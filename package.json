@@ -7,8 +7,7 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon api/index.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
