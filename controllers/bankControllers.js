@@ -120,15 +120,33 @@ exports.transfer = async (req, res) => {
       description,
     });
     await transaction.save();
-    console.log(
-      "fromAccount:",
-      fromAccount,
-      "toAccount:",
-      toAccount,
-      "amount:",
-      amount
-    );
-    res.json({ message: "Transfer successful." });
+    res.json({
+      message: "Transfer successful.",
+      transfer: {
+        amount: amount,
+        description: description || "Money transfer",
+        timestamp: new Date(),
+      },
+      fromAccount: {
+        accountNumber: fromAccount.accountNumber,
+        remainingBalance: fromAccount.balance,
+        accountType: fromAccount.type,
+      },
+      toAccount: {
+        accountNumber: toAccount.accountNumber,
+        newBalance: toAccount.balance,
+        accountType: toAccount.type,
+      },
+      transaction: {
+        transactionId: transaction._id,
+        from: fromAccount.accountNumber,
+        to: toAccount.accountNumber,
+        amount: transaction.amount,
+        type: transaction.type,
+        description: transaction.description,
+        createdAt: transaction.createdAt,
+      },
+    });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
