@@ -378,3 +378,150 @@ exports.getUserBalance = async (req, res) => {
     res.status(500).json({ error: "Server error occurred" });
   }
 };
+
+// Get all transfers made by the logged-in user
+exports.getMyTransfers = async (req, res) => {
+  try {
+    // Extract user info from JWT token
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ error: "Access token required" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId;
+
+    // Find user and their account
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (!user.approved && user.type !== "admin") {
+      return res.status(403).json({
+        error: "Account not approved. Please wait for admin approval.",
+      });
+    }
+
+    // Find user's account
+    const userAccount = await Account.findOne({ user: userId }).populate(
+      "user",
+      "name email"
+    );
+    if (!userAccount) {
+      return res.status(404).json({
+        error: "No account found for this user",
+      });
+    }
+
+    // Find all outgoing transfers made by this user
+    const outgoingTransfers = await Transaction.find({
+      from: userAccount._id,
+      type: "transfer",
+    })
+      .populate({
+        path: "to",
+        select: "accountNumber type user",
+        populate: {
+          path: "user",
+          select: "name email phone",
+        },
+      })
+      .sort({ createdAt: -1 });
+
+    // Format the transfers with recipient details
+    const formattedTransfers = outgoingTransfers.map((transfer) => {
+      const transferDate = new Date(transfer.createdAt);
+      const formattedDate = transferDate.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      const formattedTime = transferDate.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+
+      return {
+        transferId: transfer._id,
+        amount: transfer.amount,
+        description: transfer.description || "Transfer",
+        date: transfer.createdAt,
+        formattedDate: formattedDate,
+        formattedTime: formattedTime,
+        dateTimeString: `${formattedDate} at ${formattedTime}`,
+        recipient: {
+          name: transfer.to?.user?.name || "Unknown",
+          email: transfer.to?.user?.email || "Unknown",
+          phone: transfer.to?.user?.phone || "Unknown",
+          accountNumber: transfer.to?.accountNumber || "Unknown",
+          accountType: transfer.to?.type || "Unknown",
+        },
+        transferSummary: `Sent $${transfer.amount} to ${
+          transfer.to?.user?.name || "Unknown"
+        } (${transfer.to?.accountNumber || "Unknown"})`,
+      };
+    });
+
+    // Group transfers by recipient for summary
+    const transfersByRecipient = {};
+    let totalAmountTransferred = 0;
+
+    formattedTransfers.forEach((transfer) => {
+      const recipientKey = transfer.recipient.accountNumber;
+      totalAmountTransferred += transfer.amount;
+
+      if (!transfersByRecipient[recipientKey]) {
+        transfersByRecipient[recipientKey] = {
+          recipient: transfer.recipient,
+          transfers: [],
+          totalAmount: 0,
+          transferCount: 0,
+        };
+      }
+
+      transfersByRecipient[recipientKey].transfers.push(transfer);
+      transfersByRecipient[recipientKey].totalAmount += transfer.amount;
+      transfersByRecipient[recipientKey].transferCount += 1;
+    });
+
+    // Convert to array for easier frontend consumption
+    const recipientSummary = Object.values(transfersByRecipient);
+
+    res.json({
+      message: "Transfer history retrieved successfully",
+      sender: {
+        name: user.name,
+        email: user.email,
+        accountNumber: userAccount.accountNumber,
+        accountType: userAccount.type,
+      },
+      summary: {
+        totalTransfers: formattedTransfers.length,
+        totalAmountTransferred: totalAmountTransferred,
+        uniqueRecipients: recipientSummary.length,
+        dateRange:
+          formattedTransfers.length > 0
+            ? {
+                oldest:
+                  formattedTransfers[formattedTransfers.length - 1]
+                    .formattedDate,
+                newest: formattedTransfers[0].formattedDate,
+              }
+            : null,
+      },
+      recipientSummary: recipientSummary,
+      allTransfers: formattedTransfers,
+    });
+  } catch (err) {
+    if (err.name === "JsonWebTokenError") {
+      return res.status(401).json({ error: "Invalid access token" });
+    }
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({ error: "Access token expired" });
+    }
+    console.error("Get my transfers error:", err);
+    res.status(500).json({ error: "Server error occurred" });
+  }
+};

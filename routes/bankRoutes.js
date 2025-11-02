@@ -15,5 +15,6 @@ router.post("/deposit", bankControllers.deposit);
 router.post("/transfer", bankControllers.transfer);
 router.get("/transactions/:accountNumber", bankControllers.transactions);
 router.get("/balance", bankControllers.getUserBalance);
+router.get("/my-transfers", bankControllers.getMyTransfers);
 
 module.exports = router;
