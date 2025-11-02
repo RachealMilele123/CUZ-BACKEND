@@ -100,6 +100,12 @@ exports.forgotPassword = async (req, res) => {
       res.status(200).json({
         message: "Password reset email sent successfully",
         emailSent: true,
+        data: {
+          email: user.email,
+          resetToken: resetToken,
+          resetUrl: resetUrl,
+          expiresAt: new Date(user.resetPasswordExpires),
+        },
       });
     } catch (emailError) {
       console.error("Email sending failed:", emailError);
@@ -123,12 +129,36 @@ exports.forgotPassword = async (req, res) => {
 // Reset Password Function
 exports.resetPassword = async (req, res) => {
   try {
-    const { token } = req.params;
+    let { token } = req.params;
     const { password, confirmPassword } = req.body;
 
+    // Clean the token - remove any extra quotes or whitespace
+    token = token.replace(/['"]/g, "").trim();
+
+    // Debug logging
+    console.log("Reset password request:");
+    console.log("Raw token from params:", req.params.token);
+    console.log("Cleaned token:", token);
+    console.log("Request body:", req.body);
+    console.log("Password provided:", !!password);
+    console.log("Confirm password provided:", !!confirmPassword);
+
+    // First, check if token exists in params
+    if (!token) {
+      return res.status(400).json({
+        error: "Reset token is required in URL.",
+      });
+    }
+
+    // Then check if password fields are provided
     if (!password || !confirmPassword) {
       return res.status(400).json({
         error: "Password and confirm password are required.",
+        debug: {
+          receivedFields: Object.keys(req.body),
+          passwordProvided: !!password,
+          confirmPasswordProvided: !!confirmPassword,
+        },
       });
     }
 
@@ -147,15 +177,37 @@ exports.resetPassword = async (req, res) => {
     // Hash the token from URL to match with database
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
+    console.log("Token validation:");
+    console.log("Original token:", token);
+    console.log("Hashed token:", hashedToken);
+    console.log("Current time:", Date.now());
+    console.log("Current time readable:", new Date(Date.now()));
+
     // Find user with matching token and check if token has not expired
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
       resetPasswordExpires: { $gt: Date.now() },
     });
 
+    console.log("User found:", !!user);
+    if (user) {
+      console.log("User reset token:", user.resetPasswordToken);
+      console.log("Token expires at:", user.resetPasswordExpires);
+      console.log(
+        "Token expires readable:",
+        new Date(user.resetPasswordExpires)
+      );
+      console.log("Token still valid:", user.resetPasswordExpires > Date.now());
+    }
+
     if (!user) {
       return res.status(400).json({
         error: "Password reset token is invalid or has expired.",
+        debug: {
+          providedToken: token,
+          hashedToken: hashedToken,
+          currentTime: new Date(Date.now()),
+        },
       });
     }
 
