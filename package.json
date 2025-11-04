@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
-    "vercel-dev": "vercel dev"
+    "vercel-dev": "vercel dev",
+    "build": "echo 'Build completed'"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
