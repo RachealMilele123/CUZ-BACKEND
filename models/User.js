@@ -22,6 +22,9 @@ const userSchema = new mongoose.Schema({
   // Approval and timestamps
   approved: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
+  // Password reset fields
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date },
 });
 
 module.exports = mongoose.model("User", userSchema);
