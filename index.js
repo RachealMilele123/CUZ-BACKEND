@@ -3,8 +3,8 @@ dotenv.config();
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-const addressRoutes = require("../routes/addressRoutes");
-const bankRoutes = require("../routes/bankRoutes");
+const addressRoutes = require("./routes/addressRoutes");
+const bankRoutes = require("./routes/bankRoutes");
 
 const app = express();
 
@@ -14,6 +14,12 @@ const corsOptions = {
     const allowedOrigins = [
       "http://localhost:3000",
       "http://localhost:3001",
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "http://localhost:8080",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:5174",
+      "http://127.0.0.1:3000",
       "https://soschoir.vercel.app",
       "https://soschoir-git-staging-desire-irankundas-projects.vercel.app",
     ];
@@ -58,10 +64,9 @@ app.use(express.json());
 // Basic route for testing
 app.get("/", (req, res) => {
   res.json({
-    message: "🚀 CUZ Banking API is live on Vercel!",
+    message: "🚀 CUZ Banking API Server is running!",
     version: "1.0.0",
-    environment: process.env.NODE_ENV || "production",
-    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || "development",
   });
 });
 
@@ -79,21 +84,19 @@ const connectDB = async () => {
 
     if (isProduction || isVercel) {
       // Use cloud MongoDB for production/Vercel deployment
-      mongoURI = process.env.MONGO_URI_CLOUD || process.env.MONGO_URI;
+      mongoURI = process.env.MONGO_URI_CLOUD;
       console.log("Connecting to Cloud MongoDB...");
     } else {
       // Use local MongoDB for development
       mongoURI =
-        process.env.MONGO_URI_LOCAL ||
-        process.env.MONGO_URI ||
-        "mongodb://localhost:27017/zambiabank";
+        process.env.MONGO_URI_LOCAL ;
       console.log("Connecting to Local MongoDB...");
     }
 
     const conn = await mongoose.connect(mongoURI);
 
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-    console.log(`Database:: ${conn.connection.name}`);
+    console.log(` MongoDB Connected: ${conn.connection.host}`);
+    console.log(`Database: ${conn.connection.name}`);
   } catch (error) {
     console.error("Database connection error:", error.message);
 
@@ -106,14 +109,21 @@ const connectDB = async () => {
           `Fallback connection successful: ${fallbackConn.connection.host}`
         );
       } catch (fallbackError) {
-        console.error(" Fallback connection failed:", fallbackError.message);
+        console.error("Fallback connection failed:", fallbackError.message);
       }
     }
   }
 };
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB and start server
+connectDB().then(() => {
+  const PORT = process.env.PORT || 8001; // Changed to 8001 to avoid conflicts
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`🌐 Local server: http://localhost:${PORT}`);
+    console.log(`📋 API Base URL: http://localhost:${PORT}/cuz`);
+    console.log(`📖 Test endpoint: http://localhost:${PORT}/`);
+  });
+});
 
-// Export the Express app for Vercel
 module.exports = app;
