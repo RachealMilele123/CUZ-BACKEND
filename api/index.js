@@ -57,11 +57,33 @@ app.use(express.json());
 
 // Basic route for testing
 app.get("/", (req, res) => {
+  try {
+    res.json({
+      message: "🚀 CUZ Banking API is live on Vercel!",
+      version: "1.0.0",
+      environment: process.env.NODE_ENV || "production",
+      timestamp: new Date().toISOString(),
+      debug: {
+        hasMongoCloud: !!process.env.MONGO_URI_CLOUD,
+        hasJWTSecret: !!process.env.JWT_SECRET,
+        mongoStatus: mongoose.connection.readyState,
+        vercelEnv: process.env.VERCEL || "not-vercel"
+      }
+    });
+  } catch (error) {
+    console.error("Root route error:", error);
+    res.status(500).json({
+      error: "Server error in root route",
+      message: error.message
+    });
+  }
+});
+
+// Health check route
+app.get("/health", (req, res) => {
   res.json({
-    message: "🚀 CUZ Banking API is live on Vercel!",
-    version: "1.0.0",
-    environment: process.env.NODE_ENV || "production",
-    timestamp: new Date().toISOString(),
+    status: "OK",
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -96,9 +118,13 @@ const connectDB = async () => {
     console.log(`Database:: ${conn.connection.name}`);
   } catch (error) {
     console.error("Database connection error:", error.message);
+    console.error("Full error:", error);
 
-    // Fallback connection attempt
-    if (process.env.MONGO_URI) {
+    // Don't crash the app, just continue without database
+    console.warn("Continuing without database connection...");
+    
+    // Fallback connection attempt only in development
+    if (process.env.NODE_ENV !== 'production' && process.env.MONGO_URI) {
       try {
         console.log("Attempting fallback connection...");
         const fallbackConn = await mongoose.connect(process.env.MONGO_URI);
@@ -106,14 +132,35 @@ const connectDB = async () => {
           `Fallback connection successful: ${fallbackConn.connection.host}`
         );
       } catch (fallbackError) {
-        console.error(" Fallback connection failed:", fallbackError.message);
+        console.error("Fallback connection failed:", fallbackError.message);
       }
     }
   }
 };
 
-// Connect to MongoDB
-connectDB();
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Global error handler:', err);
+  res.status(500).json({
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Route not found',
+    path: req.path,
+    method: req.method
+  });
+});
+
+// Connect to MongoDB - don't let it crash the app
+connectDB().catch(err => {
+  console.error('MongoDB connection failed:', err);
+  // Don't crash the app, just log the error
+});
 
 // Export the Express app for Vercel
 module.exports = app;
