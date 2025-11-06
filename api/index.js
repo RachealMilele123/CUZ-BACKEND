@@ -3,7 +3,6 @@ dotenv.config();
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-const addressRoutes = require("../routes/addressRoutes");
 const bankRoutes = require("../routes/bankRoutes");
 
 const app = express();
@@ -67,14 +66,14 @@ app.get("/", (req, res) => {
         hasMongoCloud: !!process.env.MONGO_URI_CLOUD,
         hasJWTSecret: !!process.env.JWT_SECRET,
         mongoStatus: mongoose.connection.readyState,
-        vercelEnv: process.env.VERCEL || "not-vercel"
-      }
+        vercelEnv: process.env.VERCEL || "not-vercel",
+      },
     });
   } catch (error) {
     console.error("Root route error:", error);
     res.status(500).json({
       error: "Server error in root route",
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -83,12 +82,11 @@ app.get("/", (req, res) => {
 app.get("/health", (req, res) => {
   res.json({
     status: "OK",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
 // Routes
-app.use("/cuz/address", addressRoutes);
 app.use("/cuz/bank", bankRoutes);
 
 // Database connection configuration
@@ -122,9 +120,9 @@ const connectDB = async () => {
 
     // Don't crash the app, just continue without database
     console.warn("Continuing without database connection...");
-    
+
     // Fallback connection attempt only in development
-    if (process.env.NODE_ENV !== 'production' && process.env.MONGO_URI) {
+    if (process.env.NODE_ENV !== "production" && process.env.MONGO_URI) {
       try {
         console.log("Attempting fallback connection...");
         const fallbackConn = await mongoose.connect(process.env.MONGO_URI);
@@ -140,25 +138,28 @@ const connectDB = async () => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error('Global error handler:', err);
+  console.error("Global error handler:", err);
   res.status(500).json({
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    error: "Internal server error",
+    message:
+      process.env.NODE_ENV === "development"
+        ? err.message
+        : "Something went wrong",
   });
 });
 
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
-    error: 'Route not found',
+    error: "Route not found",
     path: req.path,
-    method: req.method
+    method: req.method,
   });
 });
 
 // Connect to MongoDB - don't let it crash the app
-connectDB().catch(err => {
-  console.error('MongoDB connection failed:', err);
+connectDB().catch((err) => {
+  console.error("MongoDB connection failed:", err);
   // Don't crash the app, just log the error
 });
 

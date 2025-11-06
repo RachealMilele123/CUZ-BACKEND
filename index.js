@@ -3,7 +3,6 @@ dotenv.config();
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-const addressRoutes = require("./routes/addressRoutes");
 const bankRoutes = require("./routes/bankRoutes");
 
 const app = express();
@@ -71,7 +70,6 @@ app.get("/", (req, res) => {
 });
 
 // Routes
-app.use("/cuz/address", addressRoutes);
 app.use("/cuz/bank", bankRoutes);
 
 // Database connection configuration
