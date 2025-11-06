@@ -33,8 +33,13 @@ exports.register = async (req, res) => {
       studentId,
       course,
       schoolName,
+      yearOfStudy,
+      expectedCompletion,
       businessName,
       registrationNumber,
+      nationalId,
+      tpinNumber,
+      termsOfService,
     } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({
@@ -48,8 +53,13 @@ exports.register = async (req, res) => {
       studentId,
       course,
       schoolName,
+      yearOfStudy,
+      expectedCompletion,
       businessName,
       registrationNumber,
+      nationalId,
+      tpinNumber,
+      termsOfService,
     });
     await user.save();
     // Create account with generated account number
@@ -71,11 +81,9 @@ exports.register = async (req, res) => {
     });
   } catch (err) {
     if (err.code === 11000 && err.keyPattern && err.keyPattern.email) {
-      return res
-        .status(409)
-        .json({
-          error: "Email already exists. Please use a different email address.",
-        });
+      return res.status(409).json({
+        error: "Email already exists. Please use a different email address.",
+      });
     }
     res.status(400).json({ error: err.message });
   }

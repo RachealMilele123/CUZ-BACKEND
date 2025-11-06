@@ -16,9 +16,15 @@ const userSchema = new mongoose.Schema({
   studentId: { type: String },
   course: { type: String },
   schoolName: { type: String },
+  yearOfStudy: { type: String },
+  expectedCompletion: { type: String },
   // Business-specific fields
   businessName: { type: String },
   registrationNumber: { type: String },
+  // Identity and compliance fields
+  nationalId: { type: String },
+  tpinNumber: { type: String },
+  termsOfService: { type: Boolean, default: false },
   // Approval and timestamps
   approved: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
