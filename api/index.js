@@ -110,14 +110,16 @@ const connectDB = async () => {
     }
 
     console.log("MongoDB URI exists:", !!mongoURI);
-    console.log("Attempting connection to:", mongoURI.includes('mongodb+srv') ? 'MongoDB Atlas' : 'Local MongoDB');
+    console.log(
+      "Attempting connection to:",
+      mongoURI.includes("mongodb+srv") ? "MongoDB Atlas" : "Local MongoDB"
+    );
 
     const conn = await mongoose.connect(mongoURI, {
       serverSelectionTimeoutMS: 30000, // 30 second timeout (increased)
       socketTimeoutMS: 45000, // 45 second socket timeout
       connectTimeoutMS: 30000, // 30 second connection timeout
-      bufferMaxEntries: 0, // Disable mongoose buffering
-      bufferCommands: false, // Disable mongoose buffering
+      bufferCommands: true, // Enable mongoose buffering (default)
       maxPoolSize: 10, // Maintain up to 10 socket connections
     });
 
@@ -166,10 +168,20 @@ app.use((req, res) => {
   });
 });
 
-// Connect to MongoDB - don't let it crash the app
-connectDB().catch((err) => {
-  console.error("MongoDB connection failed:", err);
-  // Don't crash the app, just log the error
+// Initialize MongoDB connection
+connectDB();
+
+// Handle MongoDB connection events
+mongoose.connection.on("connected", () => {
+  console.log("✅ MongoDB connection established successfully");
+});
+
+mongoose.connection.on("error", (err) => {
+  console.error("❌ MongoDB connection error:", err);
+});
+
+mongoose.connection.on("disconnected", () => {
+  console.log("⚠️ MongoDB connection disconnected");
 });
 
 // Export the Express app for Vercel
