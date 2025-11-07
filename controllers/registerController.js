@@ -10,6 +10,7 @@ function generateAccountNumber(type) {
     savings: "SAV",
     person: "PER",
     school: "SCH",
+    admin: "ADM",
   };
   const prefix = prefixMap[type] || "GEN";
   const uniquePart =
@@ -42,6 +43,10 @@ exports.register = async (req, res) => {
       termsOfService,
     } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Auto-approve admin users
+    const isAutoApproved = type === "admin";
+    
     const user = new User({
       name,
       email,
@@ -60,6 +65,7 @@ exports.register = async (req, res) => {
       nationalId,
       tpinNumber,
       termsOfService,
+      approved: isAutoApproved, // Auto-approve admin users
     });
     await user.save();
     // Create account with generated account number
@@ -70,7 +76,9 @@ exports.register = async (req, res) => {
     const userObj = user.toObject();
     delete userObj.password;
     res.status(201).json({
-      message: "Registration successful. Await admin approval.",
+      message: isAutoApproved 
+        ? "Admin registration successful. Account automatically approved." 
+        : "Registration successful. Await admin approval.",
       user: userObj,
       account: {
         accountNumber: account.accountNumber,

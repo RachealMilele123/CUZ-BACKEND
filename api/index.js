@@ -89,7 +89,7 @@ app.get("/health", (req, res) => {
 app.use("/cuz/bank", bankRoutes);
 
 // Database connection configuration
-const connectDB = async () => {
+const connectDB = async (retries = 3) => {
   try {
     const isProduction = process.env.NODE_ENV === "production";
     const isVercel = process.env.VERCEL === "1";
@@ -109,6 +109,10 @@ const connectDB = async () => {
       console.log("Connecting to Local MongoDB...");
     }
 
+    if (!mongoURI) {
+      throw new Error("No MongoDB URI found in environment variables");
+    }
+
     console.log("MongoDB URI exists:", !!mongoURI);
     console.log(
       "Attempting connection to:",
@@ -116,11 +120,19 @@ const connectDB = async () => {
     );
 
     const conn = await mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 30000, // 30 second timeout (increased)
-      socketTimeoutMS: 45000, // 45 second socket timeout
-      connectTimeoutMS: 30000, // 30 second connection timeout
-      bufferCommands: true, // Enable mongoose buffering (default)
-      maxPoolSize: 10, // Maintain up to 10 socket connections
+      serverSelectionTimeoutMS: 5000, // 5 second timeout (shorter for serverless)
+      connectTimeoutMS: 10000, // 10 second connection timeout
+      socketTimeoutMS: 0, // Disable socket timeout
+      bufferCommands: true, // Enable mongoose buffering
+      bufferMaxEntries: 0, // Disable mongoose buffer limit
+      maxPoolSize: 1, // Single connection for serverless
+      minPoolSize: 0, // No minimum connections
+      maxIdleTimeMS: 30000, // Close connections after 30 seconds idle
+      serverApi: {
+        version: '1',
+        strict: true,
+        deprecationErrors: true,
+      }
     });
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);
@@ -129,21 +141,15 @@ const connectDB = async () => {
     console.error("Database connection error:", error.message);
     console.error("Full error:", error);
 
-    // Don't crash the app, just continue without database
-    console.warn("Continuing without database connection...");
-
-    // Fallback connection attempt only in development
-    if (process.env.NODE_ENV !== "production" && process.env.MONGO_URI) {
-      try {
-        console.log("Attempting fallback connection...");
-        const fallbackConn = await mongoose.connect(process.env.MONGO_URI);
-        console.log(
-          `Fallback connection successful: ${fallbackConn.connection.host}`
-        );
-      } catch (fallbackError) {
-        console.error("Fallback connection failed:", fallbackError.message);
-      }
+    // Retry connection if retries remaining
+    if (retries > 0) {
+      console.log(`Retrying connection... (${retries} attempts left)`);
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+      return connectDB(retries - 1);
     }
+
+    // Don't crash the app, just continue without database
+    console.warn("All connection attempts failed. Continuing without database...");
   }
 };
 

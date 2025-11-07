@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema({
   dob: { type: Date },
   type: {
     type: String,
-    enum: ["student", "business", "savings", "person", "school"],
+    enum: ["student", "business", "savings", "person", "school", "admin"],
     required: true,
   },
   // Student-specific fields
