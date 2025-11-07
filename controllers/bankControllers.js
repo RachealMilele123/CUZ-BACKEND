@@ -45,6 +45,7 @@ function generateAccountNumber(type) {
     savings: "SAV",
     person: "PER",
     school: "SCH",
+    admin: "ADM",
   };
   const prefix = prefixMap[type] || "GEN";
   const uniquePart =
