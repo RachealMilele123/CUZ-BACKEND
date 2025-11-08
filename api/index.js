@@ -85,6 +85,26 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Database connection middleware for routes that need DB
+app.use("/cuz/bank", async (req, res, next) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      console.log("Database not connected, attempting to connect...");
+      await initializeDB();
+    }
+    next();
+  } catch (error) {
+    console.error("Database connection middleware error:", error);
+    res.status(503).json({
+      error: "Database connection failed",
+      details:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Service temporarily unavailable",
+    });
+  }
+});
+
 // Routes
 app.use("/cuz/bank", bankRoutes);
 
@@ -119,20 +139,17 @@ const connectDB = async (retries = 3) => {
       mongoURI.includes("mongodb+srv") ? "MongoDB Atlas" : "Local MongoDB"
     );
 
+    // For serverless environments, use a more aggressive connection strategy
     const conn = await mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 5000, // 5 second timeout (shorter for serverless)
-      connectTimeoutMS: 10000, // 10 second connection timeout
+      serverSelectionTimeoutMS: 8000, // 8 second timeout
+      connectTimeoutMS: 8000, // 8 second connection timeout
       socketTimeoutMS: 0, // Disable socket timeout
-      bufferCommands: true, // Enable mongoose buffering
-      bufferMaxEntries: 0, // Disable mongoose buffer limit
+      bufferCommands: false, // Disable buffering for immediate feedback
       maxPoolSize: 1, // Single connection for serverless
       minPoolSize: 0, // No minimum connections
-      maxIdleTimeMS: 30000, // Close connections after 30 seconds idle
-      serverApi: {
-        version: "1",
-        strict: true,
-        deprecationErrors: true,
-      },
+      maxIdleTimeMS: 10000, // Close connections after 10 seconds idle
+      retryWrites: true,
+      w: "majority",
     });
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);
@@ -176,8 +193,22 @@ app.use((req, res) => {
   });
 });
 
-// Initialize MongoDB connection
-connectDB();
+// Connection caching for serverless
+let cachedConnection = null;
+
+// Initialize MongoDB connection with caching
+const initializeDB = async () => {
+  if (cachedConnection && mongoose.connection.readyState === 1) {
+    console.log("Using cached MongoDB connection");
+    return cachedConnection;
+  }
+
+  if (mongoose.connection.readyState === 0) {
+    cachedConnection = await connectDB();
+  }
+
+  return cachedConnection;
+};
 
 // Handle MongoDB connection events
 mongoose.connection.on("connected", () => {
@@ -186,10 +217,17 @@ mongoose.connection.on("connected", () => {
 
 mongoose.connection.on("error", (err) => {
   console.error("❌ MongoDB connection error:", err);
+  cachedConnection = null; // Clear cache on error
 });
 
 mongoose.connection.on("disconnected", () => {
   console.log("⚠️ MongoDB connection disconnected");
+  cachedConnection = null; // Clear cache on disconnect
+});
+
+// Initialize connection
+initializeDB().catch((err) => {
+  console.error("Failed to initialize MongoDB:", err);
 });
 
 // Export the Express app for Vercel
