@@ -11,6 +11,7 @@ router.post("/register", registerController.register);
 router.post("/forgot-password", authControllers.forgotPassword);
 router.post("/reset-password/:token", authControllers.resetPassword);
 router.post("/approve", bankControllers.approveUser);
+router.get("/users", bankControllers.getAllUsers);
 router.post("/deposit", bankControllers.deposit);
 router.get("/deposits", bankControllers.getAllDeposits);
 router.get("/deposits/recent", bankControllers.getRecentDeposits);

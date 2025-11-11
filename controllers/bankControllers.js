@@ -37,6 +37,65 @@ exports.approveUser = async (req, res) => {
   }
 };
 
+// Get all registered users
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({})
+      .select("-password -resetPasswordToken -resetPasswordExpires") // Exclude sensitive fields
+      .populate("_id") // Populate user ID
+      .sort({ createdAt: -1 }); // Sort by newest first
+
+    // Get account information for each user
+    const usersWithAccounts = await Promise.all(
+      users.map(async (user) => {
+        const account = await Account.findOne({ user: user._id });
+        return {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          type: user.type,
+          approved: user.approved,
+          createdAt: user.createdAt,
+          address: user.address,
+          dob: user.dob,
+          // Student-specific fields
+          studentId: user.studentId,
+          course: user.course,
+          schoolName: user.schoolName,
+          yearOfStudy: user.yearOfStudy,
+          expectedCompletion: user.expectedCompletion,
+          // Business-specific fields
+          businessName: user.businessName,
+          registrationNumber: user.registrationNumber,
+          // Identity fields
+          nationalId: user.nationalId,
+          tpinNumber: user.tpinNumber,
+          termsOfService: user.termsOfService,
+          // Account information
+          account: account
+            ? {
+                accountNumber: account.accountNumber,
+                balance: account.balance,
+                accountType: account.type,
+                accountCreatedAt: account.createdAt,
+              }
+            : null,
+        };
+      })
+    );
+
+    res.json({
+      message: "All users retrieved successfully",
+      count: usersWithAccounts.length,
+      users: usersWithAccounts,
+    });
+  } catch (err) {
+    console.error("Get all users error:", err);
+    res.status(500).json({ error: "Failed to retrieve users" });
+  }
+};
+
 // Helper: Generate account number with prefix
 function generateAccountNumber(type) {
   const prefixMap = {
