@@ -57,7 +57,7 @@ app.use(express.json());
 app.get("/", (req, res) => {
   try {
     res.json({
-      message: "🚀 CUZ Banking API is live on Vercel! (Fixed)",
+      message: "🚀 Forever Trust Bank API is live on Vercel! (Fixed)",
       version: "1.0.1",
       environment: process.env.NODE_ENV || "production",
       timestamp: new Date().toISOString(),
