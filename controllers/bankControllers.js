@@ -5,7 +5,103 @@ const Account = require("../models/Account");
 const Transaction = require("../models/Transaction");
 const Beneficiary = require("../models/Beneficiary");
 const { sendEmail } = require("../utils/email");
-// ...existing code...
+
+// Helper function to generate deposit receipt email
+const generateDepositReceiptEmail = (user, account, transaction) => {
+  const subject = `Deposit Receipt - ${transaction.amount} ZMW Credited to Your Account`;
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #2c3e50; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+            .content { background-color: #f8f9fa; padding: 30px; border-radius: 0 0 5px 5px; }
+            .receipt-details { background-color: white; padding: 20px; border-radius: 5px; margin: 20px 0; }
+            .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+            .detail-label { font-weight: bold; color: #2c3e50; }
+            .amount { font-size: 24px; color: #27ae60; font-weight: bold; }
+            .footer { text-align: center; margin-top: 30px; color: #7f8c8d; font-size: 12px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🏦 Forever Trust Bank</h1>
+                <h2>Deposit Receipt</h2>
+            </div>
+            <div class="content">
+                <p>Dear <strong>${user.name}</strong>,</p>
+                <p>Your deposit has been processed successfully. Here are the details:</p>
+                
+                <div class="receipt-details">
+                    <div class="detail-row">
+                        <span class="detail-label">Transaction ID:</span>
+                        <span>${transaction._id}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Account Number:</span>
+                        <span>${account.accountNumber}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Account Type:</span>
+                        <span style="text-transform: capitalize;">${account.type}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Deposit Amount:</span>
+                        <span class="amount">ZMW ${transaction.amount.toLocaleString()}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Description:</span>
+                        <span>${transaction.description || 'Deposit'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">New Balance:</span>
+                        <span style="font-weight: bold; color: #2c3e50;">ZMW ${account.balance.toLocaleString()}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Transaction Date:</span>
+                        <span>${new Date(transaction.createdAt).toLocaleString()}</span>
+                    </div>
+                </div>
+                
+                <p>Thank you for banking with Forever Trust Bank!</p>
+                <p>If you have any questions about this transaction, please contact our customer service.</p>
+            </div>
+            <div class="footer">
+                <p>This is an automated message. Please do not reply to this email.</p>
+                <p>&copy; 2025 Forever Trust Bank. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+  `;
+
+  const text = `
+    Forever Trust Bank - Deposit Receipt
+    
+    Dear ${user.name},
+    
+    Your deposit has been processed successfully.
+    
+    Transaction Details:
+    - Transaction ID: ${transaction._id}
+    - Account Number: ${account.accountNumber}
+    - Account Type: ${account.type}
+    - Deposit Amount: ZMW ${transaction.amount.toLocaleString()}
+    - Description: ${transaction.description || 'Deposit'}
+    - New Balance: ZMW ${account.balance.toLocaleString()}
+    - Transaction Date: ${new Date(transaction.createdAt).toLocaleString()}
+    
+    Thank you for banking with Forever Trust Bank!
+    
+    This is an automated message. Please do not reply to this email.
+  `;
+
+  return { subject, html, text };
+};
 
 // Admin approves user
 exports.approveUser = async (req, res) => {
@@ -119,10 +215,16 @@ function generateAccountNumber(type) {
 exports.deposit = async (req, res) => {
   try {
     const { accountNumber, amount, description } = req.body;
-    const account = await Account.findOne({ accountNumber });
+    
+    // Find account and populate user data for email
+    const account = await Account.findOne({ accountNumber }).populate('user');
     if (!account) return res.status(404).json({ error: "Account not found" });
+    
+    // Update account balance
     account.balance += amount;
     await account.save();
+    
+    // Create transaction record
     const transaction = new Transaction({
       to: account._id,
       amount,
@@ -130,8 +232,30 @@ exports.deposit = async (req, res) => {
       description,
     });
     await transaction.save();
+    
+    // Send deposit receipt email
+    try {
+      const { subject, html, text } = generateDepositReceiptEmail(
+        account.user, 
+        account, 
+        transaction
+      );
+      
+      await sendEmail({
+        to: account.user.email,
+        subject,
+        html,
+        text
+      });
+      
+      console.log(`Deposit receipt sent to ${account.user.email}`);
+    } catch (emailError) {
+      console.error("Failed to send deposit receipt email:", emailError);
+      // Don't fail the deposit if email fails, just log the error
+    }
+    
     res.json({
-      message: "Deposit successful.",
+      message: "Deposit successful. Receipt sent to your email.",
       transaction: {
         to: transaction.to,
         amount: transaction.amount,
