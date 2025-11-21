@@ -87,13 +87,13 @@ exports.forgotPassword = async (req, res) => {
       <p>This link will expire in 10 minutes.</p>
       <br>
       <p>Best regards,</p>
-      <p>CUZ Banking Team</p>
+      <p>Forever Trust Bank Team</p>
     `;
 
     try {
       await sendEmail({
         to: user.email,
-        subject: "Password Reset Request - CUZ Banking",
+        subject: "Password Reset Request - Forever Trust Bank",
         html: message,
       });
 
