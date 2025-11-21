@@ -13,7 +13,7 @@ const corsOptions = {
     const allowedOrigins = [
       "http://localhost:3000",
       "http://localhost:3001",
-      "https://cuz-bank-system.vercel.app",
+      "https://cuz-dfms.vercel.app",
     ];
 
     // Allow requests with no origin (mobile apps, Postman, etc.)
